@@ -2,6 +2,7 @@ import { estimateEquity } from '@/poker/equity';
 import { legalActions, potTotal } from '@/poker/engine';
 import type { Card } from '@/poker/cards';
 import { readHumans, readSizingTell } from '@/poker/opponent-model';
+import { breakEvenEquity, evCall, polarizedPlan } from '@/poker/strategy';
 import type { Action, Aggression, BotLevel, LegalInfo, Seat, TableState } from '@/poker/types';
 
 interface Profile {
@@ -213,6 +214,18 @@ export function chooseBotAction(
     return { type: 'fold' };
   }
 
+  // No bet to call: strong bots balance their betting range (polarization).
+  if (edge > 0) {
+    const plan = polarizedPlan(equity, pot, profile.betFraction, 1 + foldy * 0.5 * edge);
+    if (plan === 'value' && legal.canRaise && Math.random() < profile.valueBetChance) {
+      return { type: 'raise', to: sizedTarget(table, legal, valueFraction * (0.9 + Math.random() * 0.4)) };
+    }
+    if (plan === 'bluff' && legal.canRaise) {
+      return { type: 'raise', to: sizedTarget(table, legal, bluffFraction) };
+    }
+    return { type: 'check' };
+  }
+
   // Weak bots often just check strong hands instead of betting them.
   if (soft > 0 && equity > 0.6 && Math.random() < soft * 0.6) return { type: 'check' };
 
@@ -225,3 +238,8 @@ export function chooseBotAction(
   }
   return { type: 'check' };
 }
+
+
+export { normalizeWinRate }
+
+export { chooseBotAction }
